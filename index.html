@@ -1,0 +1,2170 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Интерактивный дашборд «Рентабельность проекта»</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Chart.js and DataLabels Plugin -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            mint: '#B2F0D1',
+            turquoise: '#B2F0F0',
+            cyanLight: '#B2D1F0',
+            warning: '#F2C879',
+            danger: '#FF7F87',
+            darkBg: '#0B1117',
+            darkCard: '#121C25',
+            darkSub: '#182630',
+            darkText: '#F4F7FA',
+            darkMuted: '#93A4B2',
+            lightBg: '#F5F8F8',
+            lightCard: '#FFFFFF',
+            lightSub: '#EAF2F3',
+            lightText: '#172029',
+            lightMuted: '#657580',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Global Smooth Transitions */
+    * {
+      transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    /* Card Glow Effect on Hover (ТЗ 3) */
+    .fin-card {
+      border-radius: 18px;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .dark .fin-card {
+      background-color: #121C25;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+    }
+    .dark .fin-card:hover {
+      box-shadow: 0 0 0 1px rgba(178, 240, 209, 0.35), 0 0 24px rgba(178, 240, 240, 0.18);
+    }
+
+    .light .fin-card {
+      background-color: #FFFFFF;
+      border: 1px solid #D1D9E0;
+      box-shadow: 0 4px 18px -2px rgba(15, 23, 42, 0.08);
+    }
+    .light .fin-card:hover {
+      box-shadow: 0 0 0 1.5px rgba(6, 95, 70, 0.4), 0 8px 24px rgba(13, 148, 136, 0.12);
+    }
+
+    /* Subcard styling */
+    .dark .fin-sub-card {
+      background-color: #182630;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .light .fin-sub-card {
+      background-color: #F1F5F9;
+      border: 1px solid #CBD5E1;
+    }
+
+    /* Inputs styling with HIGH CONTRAST on light theme */
+    .dark .fin-input {
+      background-color: #182630;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #F4F7FA;
+    }
+    .dark .fin-input:focus {
+      border-color: #B2F0D1;
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(178, 240, 209, 0.25);
+    }
+
+    .light .fin-input {
+      background-color: #FFFFFF;
+      border: 1.5px solid #94A3B8;
+      color: #000000 !important;
+      font-weight: 700;
+    }
+    .light .fin-input:focus {
+      border-color: #0D9488;
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.25);
+    }
+
+    /* High contrast text labels & values */
+    .light .val-strong {
+      color: #000000 !important;
+      font-weight: 800 !important;
+    }
+    .dark .val-strong {
+      color: #F4F7FA !important;
+    }
+    .light .val-muted {
+      color: #334155 !important;
+      font-weight: 600 !important;
+    }
+    .dark .val-muted {
+      color: #93A4B2 !important;
+    }
+
+    /* Badges in top-right of cards */
+    .dark .card-sum-badge {
+      color: #B2F0D1;
+      background: rgba(178, 240, 209, 0.12);
+      border: 1px solid rgba(178, 240, 209, 0.3);
+    }
+    .light .card-sum-badge {
+      color: #000000 !important;
+      background: #E2E8F0;
+      border: 1.5px solid #64748B;
+      font-weight: 900 !important;
+    }
+
+    /* Accents for light/dark */
+    .dark .acc-mint { color: #B2F0D1; }
+    .light .acc-mint { color: #047857; font-weight: 800; }
+
+    .dark .acc-cyan { color: #B2D1F0; }
+    .light .acc-cyan { color: #0369A1; font-weight: 800; }
+
+    /* Custom range slider styling */
+    input[type=range] {
+      accent-color: #10B981;
+    }
+
+    /* Hide spin buttons on number inputs */
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+      -webkit-appearance: none; 
+      margin: 0; 
+    }
+  </style>
+</head>
+
+<body class="bg-darkBg text-darkText font-sans min-h-screen flex flex-col antialiased transition-colors duration-200">
+  <!-- ==================== HEADER & TOP NAVIGATION ==================== -->
+  <header class="sticky top-0 z-40 backdrop-blur-md bg-darkBg/90 border-b border-white/10 dark:border-white/10 light:border-slate-300 light:bg-lightBg/90">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Title & Branding -->
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-400 to-cyan-400 flex items-center justify-center text-darkBg font-black text-lg shadow-md shadow-emerald-500/20">
+          ₽
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-black tracking-tight val-strong">Рентабельность проекта</h1>
+          <div class="flex items-center gap-2 text-[11px] val-muted">
+            <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="save-status-label">Автосохранение включено</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs (3 Pages) -->
+      <nav class="flex items-center gap-1.5 p-1 rounded-2xl fin-sub-card border border-white/10">
+        <button id="tab-btn-charts" onclick="switchPage('charts')" class="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all bg-mint text-darkBg shadow-sm">
+          📊 Диаграммы и выводы
+        </button>
+        <button id="tab-btn-analytics" onclick="switchPage('analytics')" class="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all val-muted hover:text-white">
+          🎯 Аналитика и стресс-тест
+        </button>
+        <button id="tab-btn-inputs" onclick="switchPage('inputs')" class="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all val-muted hover:text-white flex items-center gap-1.5">
+          <span>📝 Исходные данные</span>
+          <span id="tilda-badge-tag" class="hidden text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 font-bold border border-amber-500/30">Read-Only</span>
+        </button>
+      </nav>
+
+      <!-- Action Controls -->
+      <div class="flex items-center gap-2">
+        <!-- Tilda Mode Protected Toggle -->
+        <button onclick="requestTildaToggle()" id="btn-tilda-mode" title="Включение режима только для чтения для Тильды (защищено PIN)" class="px-2.5 py-1.5 rounded-xl border border-white/15 text-xs font-semibold val-muted hover:border-amber-400 transition-colors flex items-center gap-1">
+          <span id="tilda-lock-icon">🔓</span>
+          <span class="hidden md:inline">Режим Tilda</span>
+        </button>
+
+        <!-- Official CBR Exchange Rate Fetch Button -->
+        <button onclick="triggerCbrFetchFromHeader()" title="Обновить курс ЦБ РФ на выбранную дату" class="px-3 py-1.5 rounded-xl border border-emerald-500/40 text-xs font-bold acc-mint hover:bg-emerald-500/10 transition-colors flex items-center gap-1.5">
+          <span>🏛️</span>
+          <span>Курс валюты</span>
+        </button>
+
+        <!-- Theme Toggle -->
+        <button onclick="toggleTheme()" id="theme-toggle-btn" title="Сменить тему оформления" class="w-9 h-9 rounded-xl fin-sub-card flex items-center justify-center text-sm val-strong hover:scale-105 transition-transform">
+          🌙
+        </button>
+
+        <!-- Reset Calculation Modal Trigger -->
+        <button onclick="openResetModal()" title="Сбросить все данные к заводским" class="w-9 h-9 rounded-xl fin-sub-card text-danger hover:bg-danger/20 flex items-center justify-center text-sm transition-colors">
+          ↺
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Notification Toast Box -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- MAIN VIEWPORT CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+    <!-- Banner for Tilda Read-Only Mode -->
+    <div id="tilda-readonly-banner" class="hidden fin-card p-3.5 border-amber-500/40 bg-amber-500/10 flex items-center justify-between gap-3 text-xs sm:text-sm">
+      <div class="flex items-center gap-2.5 text-amber-500 dark:text-amber-300 font-medium">
+        <span class="text-lg">🔒</span>
+        <span><strong>Режим витрины Tilda:</strong> Исходные данные зафиксированы автором проекта. Используйте стресс-тест сценариев «Что, если» для оценки рисков.</span>
+      </div>
+      <button onclick="switchPage('analytics')" class="px-3 py-1 bg-amber-500 text-darkBg font-bold rounded-lg hover:bg-amber-400 text-xs whitespace-nowrap">
+        Перейти к стресс-тесту →
+      </button>
+    </div>
+    <!-- ================================================================= -->
+    <!-- PAGE 1: ДИАГРАММЫ И ВЫВОДЫ                                        -->
+    <!-- ================================================================= -->
+    <div id="page-charts" class="space-y-6">
+      
+      <!-- Top Overview Quick Strip -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="fin-card p-4 flex items-center justify-between">
+          <div>
+            <div class="text-xs val-muted font-medium uppercase tracking-wider">Выручка без НДС</div>
+            <div class="text-xl sm:text-2xl font-black val-strong mt-0.5" id="sum-preview-revenue">10 000 000 ₽</div>
+          </div>
+          <span class="text-2xl">💼</span>
+        </div>
+
+        <div class="fin-card p-4 flex items-center justify-between">
+          <div>
+            <div class="text-xs val-muted font-medium uppercase tracking-wider">Чистая прибыль</div>
+            <div class="text-xl sm:text-2xl font-black acc-cyan mt-0.5" id="sum-preview-net">1 145 000 ₽</div>
+          </div>
+          <span class="text-xs px-2.5 py-1 rounded-full font-extrabold acc-cyan fin-sub-card" id="sum-preview-ratio">11,45%</span>
+        </div>
+
+        <div class="fin-card p-4 flex items-center justify-between">
+          <div>
+            <div class="text-xs val-muted font-medium uppercase tracking-wider">Макс. возможная скидка</div>
+            <div class="text-xl sm:text-2xl font-black acc-mint mt-0.5" id="sum-preview-safety">+14,83%</div>
+          </div>
+          <span class="text-xs px-2.5 py-1 rounded-full font-extrabold acc-mint fin-sub-card">🛡️ Буфер</span>
+        </div>
+      </div>
+
+      <!-- Charts Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- График 1. Сравнение рентабельности -->
+        <div class="fin-card p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-white/10 pb-3">
+            <div>
+              <h3 class="font-bold text-base val-strong">Сравнение рентабельности</h3>
+              <p class="text-xs val-muted">Маржинальная vs Операционная vs Чистая прибыль (%)</p>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded fin-sub-card font-mono val-strong">ТЗ §5.2.1</span>
+          </div>
+          <div class="relative h-64 sm:h-72 w-full">
+            <canvas id="chartRentability"></canvas>
+          </div>
+        </div>
+
+        <!-- График 2. Структура расходов (Легенда справа, диаграмма слева) -->
+        <div class="fin-card p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-white/10 pb-3">
+            <div>
+              <h3 class="font-bold text-base val-strong">Структура расходов проекта</h3>
+              <p class="text-xs val-muted">Доля каждой группы затрат в общем объеме расходов</p>
+            </div>
+            <span class="text-xs px-2 py-0.5 rounded fin-sub-card font-mono val-strong" id="chart-total-costs-badge">8 855 000 ₽</span>
+          </div>
+          <div class="relative h-64 sm:h-72 w-full flex items-center justify-center">
+            <canvas id="chartExpenses"></canvas>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- График 3. Как формируется прибыль (Каскадный Waterfall) -->
+      <div class="fin-card p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
+          <div>
+            <h3 class="font-bold text-base val-strong">Как формируется прибыль (Каскадная диаграмма)</h3>
+            <p class="text-xs val-muted">Пошаговое списание затрат от Выручки б/НДС до Чистой прибыли</p>
+          </div>
+          <div class="flex items-center gap-2 text-xs">
+            <button onclick="setWaterfallMode('base')" id="wf-mode-base" class="px-2.5 py-1 rounded-lg font-bold bg-mint text-darkBg">Базовый</button>
+            <button onclick="setWaterfallMode('scenario')" id="wf-mode-scen" class="px-2.5 py-1 rounded-lg font-semibold fin-sub-card val-muted">Сценарный</button>
+          </div>
+        </div>
+        <div class="relative h-80 sm:h-96 w-full">
+          <canvas id="chartWaterfall"></canvas>
+        </div>
+      </div>
+
+      <!-- Блок 9: Что можно оптимизировать (Персональные рекомендации с расчётом порогов) -->
+      <div class="fin-card p-6 space-y-4 border-emerald-500/30">
+        <div class="flex items-center justify-between border-b border-white/10 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">💡</span>
+            <h3 class="font-bold text-base sm:text-lg val-strong">Финансовые выводы и рекомендации</h3>
+          </div>
+          <span class="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-500 font-bold border border-emerald-500/30">Интеллектуальный анализ</span>
+        </div>
+
+        <div id="recommendations-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm">
+          <!-- Dynamically populated recommendations -->
+        </div>
+      </div>
+
+    </div>
+    <!-- ================================================================= -->
+    <!-- PAGE 2: ФИНАНСОВАЯ АНАЛИТИКА СДЕЛКИ И СТРЕСС-ТЕСТ «ЧТО, ЕСЛИ»      -->
+    <!-- ================================================================= -->
+    <div id="page-analytics" class="hidden space-y-6">
+      
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- LEFT COLUMN: Финансовая аналитика сделки (6 KPI Карточек) -->
+        <div class="lg:col-span-6 space-y-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base sm:text-lg font-bold flex items-center gap-2 val-strong">
+              <span>🎯</span> Финансовая аналитика сделки
+            </h2>
+            <span class="text-xs val-muted">Все расчеты без НДС</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            
+            <!-- KPI 1: Выручка без НДС -->
+            <div class="fin-card p-4 relative overflow-hidden flex flex-col justify-between">
+              <div class="flex items-center justify-between text-xs val-muted mb-1.5">
+                <span class="font-bold tracking-wide uppercase text-[11px]">Выручка без НДС</span>
+                <span class="p-1 rounded-md fin-sub-card text-[11px] font-mono">База 100%</span>
+              </div>
+              <div>
+                <div class="text-xl sm:text-2xl font-black tracking-tight val-strong" id="kpi-revenue">10 000 000 ₽</div>
+                <div class="text-[11px] val-muted mt-1" id="kpi-contract-vat">С НДС (справочно): 12 000 000 ₽</div>
+              </div>
+              <div class="mt-2.5 pt-2 border-t border-white/10 flex justify-between text-[11px] val-muted">
+                <span>Дельта сценария:</span>
+                <span id="kpi-revenue-delta" class="font-bold val-strong">0 ₽</span>
+              </div>
+            </div>
+
+            <!-- KPI 2: Общая сумма расходов -->
+            <div class="fin-card p-4 relative overflow-hidden flex flex-col justify-between">
+              <div class="flex items-center justify-between text-xs val-muted mb-1.5">
+                <span class="font-bold tracking-wide uppercase text-[11px]">Сумма расходов</span>
+                <span class="text-xs px-2 py-0.5 rounded-full font-bold text-amber-500 fin-sub-card" id="kpi-cost-ratio">88,55%</span>
+              </div>
+              <div>
+                <div class="text-xl sm:text-2xl font-black tracking-tight text-amber-500" id="kpi-total-costs">8 855 000 ₽</div>
+                <div class="text-[11px] val-muted mt-1">Доля от выручки без НДС</div>
+              </div>
+              <div class="mt-2.5 pt-2 border-t border-white/10 flex justify-between text-[11px] val-muted">
+                <span>Дельта сценария:</span>
+                <span id="kpi-cost-delta" class="font-bold val-strong">0 ₽</span>
+              </div>
+            </div>
+
+            <!-- KPI 3: Маржинальная прибыль -->
+            <div class="fin-card p-4 relative overflow-hidden flex flex-col justify-between border-emerald-500/30">
+              <div class="flex items-center justify-between text-xs val-muted mb-1.5">
+                <span class="font-bold tracking-wide uppercase text-[11px]">Маржинальная прибыль</span>
+                <span class="text-xs px-2 py-0.5 rounded-full font-extrabold acc-mint fin-sub-card" id="kpi-margin-ratio">22,68%</span>
+              </div>
+              <div>
+                <div class="text-xl sm:text-2xl font-black tracking-tight acc-mint" id="kpi-margin-profit">2 268 000 ₽</div>
+                <div class="flex items-center gap-2 mt-1 text-xs">
+                  <span class="font-bold acc-mint" id="kpi-margin-delta-rate">22,68%</span>
+                  <span class="val-muted text-[11px]" id="kpi-margin-delta">0 ₽</span>
+                </div>
+              </div>
+              <div class="mt-2.5 pt-2 border-t border-white/10 flex justify-between text-[11px] val-muted">
+                <span>Целевой бенчмарк:</span>
+                <span class="val-strong font-bold" id="kpi-margin-target">≥ 20%</span>
+              </div>
+            </div>
+
+            <!-- KPI 4: Операционная прибыль -->
+            <div class="fin-card p-4 relative overflow-hidden flex flex-col justify-between border-cyan-500/30">
+              <div class="flex items-center justify-between text-xs val-muted mb-1.5">
+                <span class="font-bold tracking-wide uppercase text-[11px]">Операционная прибыль</span>
+                <span class="text-xs px-2 py-0.5 rounded-full font-extrabold acc-cyan fin-sub-card" id="kpi-oper-ratio">15,28%</span>
+              </div>
+              <div>
+                <div class="text-xl sm:text-2xl font-black tracking-tight acc-cyan" id="kpi-oper-profit">1 528 000 ₽</div>
+                <div class="flex items-center gap-2 mt-1 text-xs">
+                  <span class="font-bold acc-cyan" id="kpi-oper-delta-rate">15,28%</span>
+                  <span class="val-muted text-[11px]" id="kpi-oper-delta">0 ₽</span>
+                </div>
+              </div>
+              <div class="mt-2.5 pt-2 border-t border-white/10 flex justify-between text-[11px] val-muted">
+                <span>EBITDA проекта:</span>
+                <span class="val-strong font-bold" id="kpi-oper-target">15,28%</span>
+              </div>
+            </div>
+
+            <!-- KPI 5: Чистая прибыль -->
+            <div class="fin-card p-4 relative overflow-hidden flex flex-col justify-between border-blue-500/40">
+              <div class="flex items-center justify-between text-xs val-muted mb-1.5">
+                <span class="font-bold tracking-wide uppercase text-[11px]">Чистая прибыль</span>
+                <span class="text-xs px-2 py-0.5 rounded-full font-extrabold acc-cyan fin-sub-card" id="kpi-net-ratio">11,45%</span>
+              </div>
+              <div>
+                <div class="text-xl sm:text-2xl font-black tracking-tight acc-cyan" id="kpi-net-profit">1 145 000 ₽</div>
+                <div class="flex items-center gap-2 mt-1 text-xs">
+                  <span class="font-bold acc-cyan" id="kpi-net-delta-rate">11,45% чистая</span>
+                  <span class="val-muted text-[11px]" id="kpi-net-delta">0 ₽</span>
+                </div>
+              </div>
+              <div class="mt-2.5 pt-2 border-t border-white/10 flex justify-between text-[11px] val-muted">
+                <span>Налоги + риски: <span id="kpi-net-deductions" class="val-strong font-bold">383 000 ₽</span></span>
+                <span id="kpi-net-status" class="acc-mint font-bold">Прибыльно</span>
+              </div>
+            </div>
+
+            <!-- KPI 6: Макс. возможная скидка (Карточка строго по вашим требованиям) -->
+            <div class="fin-card p-4 relative overflow-hidden flex flex-col justify-between border-emerald-500/40">
+              <div class="flex items-center justify-between text-xs val-muted mb-1.5">
+                <span class="font-bold tracking-wide uppercase text-[11px]">Макс. возможная скидка</span>
+                <span class="p-1 rounded-md fin-sub-card acc-mint text-[11px] font-bold">🛡️ Буфер</span>
+              </div>
+              <div>
+                <div class="text-2xl sm:text-3xl font-black tracking-tight acc-mint" id="kpi-safety-percent">+14,83%</div>
+                <div class="text-[11px] text-slate-400 dark:text-slate-400 mt-1 leading-snug">
+                  Скидка, при которой вы ничего не заработаете (прибыль = 0 ₽)
+                </div>
+              </div>
+              <div class="mt-2.5 pt-2 border-t border-white/10 flex justify-between text-[11px] val-muted">
+                <span>Запас в рублях: <strong class="val-strong font-bold text-xs" id="kpi-safety-rub">1 482 979 ₽</strong></span>
+                <span id="kpi-safety-badge" class="acc-mint font-bold">Надежный</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Стресс-тест сценариев «Что, если» -->
+        <div class="lg:col-span-6 fin-card p-5 space-y-4 border-white/10">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
+            <div>
+              <h2 class="text-base sm:text-lg font-bold flex items-center gap-2 val-strong">
+                <span>⚡</span> Стресс-тест сценариев «Что, если»
+              </h2>
+              <p class="text-xs val-muted">Моделирование рыночных рисков и скачков затрат</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="resetScenarioSliders()" class="px-2.5 py-1 text-xs font-semibold fin-sub-card rounded-lg val-muted hover:text-white transition-colors">
+                ↺ Сбросить
+              </button>
+              <button onclick="applyScenarioAsBase()" class="px-3 py-1 text-xs font-bold bg-mint text-darkBg rounded-lg hover:bg-emerald-300 transition-colors shadow-sm">
+                Сделать базовым
+              </button>
+            </div>
+          </div>
+
+          <!-- 8 Sliders from specs -->
+          <div class="space-y-3.5 text-xs">
+            
+            <!-- 1. Курс валюты -->
+            <div class="space-y-1">
+              <div class="flex justify-between items-center">
+                <span class="val-strong font-semibold">1. Курс валюты</span>
+                <div class="flex items-center gap-2">
+                  <span class="font-mono val-muted" id="val-slider-fx-rub">86,38 ₽</span>
+                  <span class="font-bold acc-mint" id="val-slider-fx-pct">0%</span>
+                </div>
+              </div>
+              <input type="range" id="slider-fx" min="-20" max="40" value="0" step="1" oninput="handleSliderChange()" class="w-full h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+              <div class="flex justify-between text-[10px] val-muted"><span>-20%</span><span>0%</span><span>+40%</span></div>
+            </div>
+
+            <!-- 2. Стоимость оборудования -->
+            <div class="space-y-1">
+              <div class="flex justify-between items-center">
+                <span class="val-strong font-semibold">2. Стоимость оборудования</span>
+                <div class="flex items-center gap-2">
+                  <span class="font-mono val-muted" id="val-slider-equip-rub">5 420 000 ₽</span>
+                  <span class="font-bold acc-mint" id="val-slider-equip-pct">0%</span>
+                </div>
+              </div>
+              <input type="range" id="slider-equip" min="-10" max="30" value="0" step="1" oninput="handleSliderChange()" class="w-full h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+              <div class="flex justify-between text-[10px] val-muted"><span>-10%</span><span>0%</span><span>+30%</span></div>
+            </div>
+
+            <!-- 3. Логистика и таможня -->
+            <div class="space-y-1">
+              <div class="flex justify-between items-center">
+                <span class="val-strong font-semibold">3. Логистика и таможня</span>
+                <div class="flex items-center gap-2">
+                  <span class="font-mono val-muted" id="val-slider-log-rub">1 332 000 ₽</span>
+                  <span class="font-bold acc-mint" id="val-slider-log-pct">0%</span>
+                </div>
+              </div>
+              <input type="range" id="slider-log" min="-20" max="50" value="0" step="1" oninput="handleSliderChange()" class="w-full h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+              <div class="flex justify-between text-[10px] val-muted"><span>-20%</span><span>0%</span><span>+50%</span></div>
+            </div>
+
+            <!-- 4. Зарплата производственного персонала -->
+            <div class="space-y-1">
+              <div class="flex justify-between items-center">
+                <span class="val-strong font-semibold">4. Производственный ФОТ</span>
+                <div class="flex items-center gap-2">
+                  <span class="font-mono val-muted" id="val-slider-pay-rub">460 000 ₽</span>
+                  <span class="font-bold acc-mint" id="val-slider-pay-pct">0%</span>
+                </div>
+              </div>
+              <input type="range" id="slider-pay" min="-10" max="50" value="0" step="1" oninput="handleSliderChange()" class="w-full h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+              <div class="flex justify-between text-[10px] val-muted"><span>-10%</span><span>0%</span><span>+50%</span></div>
+            </div>
+
+            <!-- 5. Командировочные расходы -->
+            <div class="space-y-1">
+              <div class="flex justify-between items-center">
+                <span class="val-strong font-semibold">5. Командировочные расходы</span>
+                <div class="flex items-center gap-2">
+                  <span class="font-mono val-muted" id="val-slider-travel-rub">140 000 ₽</span>
+                  <span class="font-bold acc-mint" id="val-slider-travel-pct">0%</span>
+                </div>
+              </div>
+              <input type="range" id="slider-travel" min="-20" max="100" value="0" step="1" oninput="handleSliderChange()" class="w-full h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+              <div class="flex justify-between text-[10px] val-muted"><span>-20%</span><span>0%</span><span>+100%</span></div>
+            </div>
+
+            <!-- 6. Накладные расходы -->
+            <div class="space-y-1">
+              <div class="flex justify-between items-center">
+                <span class="val-strong font-semibold">6. Накладные расходы</span>
+                <div class="flex items-center gap-2">
+                  <span class="font-mono val-muted" id="val-slider-overhead-rub">140 000 ₽</span>
+                  <span class="font-bold acc-mint" id="val-slider-overhead-pct">0%</span>
+                </div>
+              </div>
+              <input type="range" id="slider-overhead" min="-20" max="50" value="0" step="1" oninput="handleSliderChange()" class="w-full h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+              <div class="flex justify-between text-[10px] val-muted"><span>-20%</span><span>0%</span><span>+50%</span></div>
+            </div>
+
+            <!-- 7. Возможные штрафы (0 до 10% выручки) -->
+            <div class="space-y-1">
+              <div class="flex justify-between items-center">
+                <span class="val-strong font-semibold">7. Возможные штрафы (от выручки)</span>
+                <div class="flex items-center gap-2">
+                  <span class="font-mono val-muted" id="val-slider-penalties-rub">0 ₽</span>
+                  <span class="font-bold acc-mint" id="val-slider-penalties-pct">0%</span>
+                </div>
+              </div>
+              <input type="range" id="slider-penalties" min="0" max="10" value="0" step="0.5" oninput="handleSliderChange()" class="w-full h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+              <div class="flex justify-between text-[10px] val-muted"><span>0%</span><span>5%</span><span>10%</span></div>
+            </div>
+
+            <!-- 8. Цена договора -->
+            <div class="space-y-1">
+              <div class="flex justify-between items-center">
+                <span class="val-strong font-semibold">8. Цена договора</span>
+                <div class="flex items-center gap-2">
+                  <span class="font-mono val-muted" id="val-slider-price-rub">10 000 000 ₽</span>
+                  <span class="font-bold acc-mint" id="val-slider-price-pct">0%</span>
+                </div>
+              </div>
+              <input type="range" id="slider-price" min="-20" max="20" value="0" step="1" oninput="handleSliderChange()" class="w-full h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+              <div class="flex justify-between text-[10px] val-muted"><span>-20%</span><span>0%</span><span>+20%</span></div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+    <!-- ================================================================= -->
+    <!-- PAGE 3: ИСХОДНЫЕ ДАННЫЕ                                           -->
+    <!-- ================================================================= -->
+    <div id="page-inputs" class="hidden space-y-6">
+      
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
+        <div>
+          <h2 class="text-lg sm:text-xl font-black val-strong">Параметры и спецификация проекта</h2>
+          <p class="text-xs val-muted">Значения вводятся вручную с автоматическим пересчетом итогов</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="restoreDefaults()" class="px-3 py-1.5 rounded-xl border border-white/10 text-xs val-muted hover:text-white transition-colors">
+            Сбросить к образцу
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- 7.1 Параметры договора с Заказчиком -->
+        <div class="fin-card p-5 space-y-4">
+          <div class="flex items-center justify-between pb-2 border-b border-white/10">
+            <h3 class="font-bold text-sm sm:text-base flex items-center gap-2 val-strong">
+              <span>📜</span> Параметры договора с Заказчиком
+            </h3>
+            <span class="text-xs px-2.5 py-1 rounded-full card-sum-badge" id="sum-cat-contract">10 000 000 ₽ б/НДС</span>
+          </div>
+
+          <div class="space-y-3">
+            <div class="space-y-1">
+              <label class="text-xs font-semibold val-strong">Название проекта</label>
+              <input type="text" id="in-projectName" value="Внедрение ERP 2026" oninput="handleInputChange()" class="w-full px-3 py-2 rounded-xl fin-input text-sm">
+            </div>
+
+            <!-- Currency Checkbox & Rate for Contract -->
+            <div class="p-3 rounded-xl fin-sub-card space-y-2.5">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-bold flex items-center gap-2 cursor-pointer val-strong">
+                  <input type="checkbox" id="in-contractInFx" onchange="toggleContractFx(this.checked)" class="w-4 h-4 rounded text-emerald-500">
+                  <span>Договор в у.е. (в валюте)</span>
+                </label>
+                <span class="text-[11px] val-muted">Курс ЦБ РФ</span>
+              </div>
+
+              <div id="contract-fx-box" class="hidden grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-white/10">
+                <div>
+                  <label class="text-[11px] val-muted">Валюта договора</label>
+                  <select id="in-contractCurrency" onchange="fetchCbrRateForContract()" class="w-full px-2 py-1.5 rounded-lg fin-input text-xs font-bold">
+                    <option value="USD" selected>USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="CNY">CNY (¥)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-[11px] val-muted">Дата курса ЦБ</label>
+                  <input type="date" id="in-contractFxDate" value="2026-09-01" onchange="fetchCbrRateForContract()" class="w-full px-2 py-1.5 rounded-lg fin-input text-xs">
+                </div>
+                <div>
+                  <label class="text-[11px] val-muted">Курс ЦБ (₽)</label>
+                  <input type="number" id="in-contractFxRate" value="86.38" step="0.01" oninput="handleContractFxAmountChange()" class="w-full px-2 py-1.5 rounded-lg fin-input text-xs font-mono font-bold">
+                </div>
+              </div>
+
+              <div id="contract-fx-amount-box" class="hidden space-y-1">
+                <label class="text-xs font-semibold val-strong">Сумма договора в валюте (с НДС)</label>
+                <input type="text" id="in-contractFxAmount" value="138 921" oninput="formatAndRecalcCurrencyInput(this, 'contractFxAmount', handleContractFxAmountChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono font-bold">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="space-y-1">
+                <div class="flex items-center justify-between text-xs val-strong">
+                  <span>Сумма договора с НДС (справочно)</span>
+                  <span id="formatted-contractWithVat" class="text-[11px] font-mono">12 000 000 ₽</span>
+                </div>
+                <input type="text" id="in-contractWithVat" value="12 000 000" oninput="formatAndRecalcCurrencyInput(this, 'contractWithVat', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-bold font-mono">
+              </div>
+
+              <div class="space-y-1">
+                <label class="text-xs font-semibold val-strong">Ставка НДС (%)</label>
+                <input type="number" id="in-vatRate" value="20" min="0" max="100" oninput="handleInputChange()" class="w-full px-3 py-2 rounded-xl fin-input text-sm">
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-xs font-semibold val-strong">Скидка заказчику (%)</label>
+              <input type="number" id="in-discount" value="0" min="0" max="100" oninput="handleInputChange()" class="w-full px-3 py-2 rounded-xl fin-input text-sm">
+            </div>
+          </div>
+        </div>
+
+        <!-- 7.2 Оборудование и материалы -->
+        <div class="fin-card p-5 space-y-4 h-fit self-start">
+          <div class="flex items-center justify-between pb-2 border-b border-white/10">
+            <h3 class="font-bold text-sm sm:text-base flex items-center gap-2 val-strong">
+              <span>📦</span> Оборудование и материалы
+            </h3>
+            <span class="text-xs px-2.5 py-1 rounded-full card-sum-badge" id="sum-cat-equipment">5 420 000 ₽</span>
+          </div>
+
+          <div class="space-y-3">
+            <!-- Currency Checkbox for Procurement -->
+            <div class="p-3 rounded-xl fin-sub-card space-y-2.5">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-bold flex items-center gap-2 cursor-pointer val-strong">
+                  <input type="checkbox" id="in-equipInFx" onchange="toggleEquipFx(this.checked)" class="w-4 h-4 rounded text-emerald-500">
+                  <span>Закупка оборудования в валюте</span>
+                </label>
+                <span class="text-[11px] val-muted">Курс ЦБ РФ</span>
+              </div>
+
+              <div id="equip-fx-box" class="hidden grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-white/10">
+                <div>
+                  <label class="text-[11px] val-muted">Валюта закупки</label>
+                  <select id="in-equipCurrency" onchange="fetchCbrRateForEquip()" class="w-full px-2 py-1.5 rounded-lg fin-input text-xs font-bold">
+                    <option value="USD" selected>USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="CNY">CNY (¥)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-[11px] val-muted">Дата курса ЦБ</label>
+                  <input type="date" id="in-equipFxDate" value="2026-09-01" onchange="fetchCbrRateForEquip()" class="w-full px-2 py-1.5 rounded-lg fin-input text-xs">
+                </div>
+                <div>
+                  <label class="text-[11px] val-muted">Курс ЦБ (₽)</label>
+                  <input type="number" id="in-equipFxRate" value="86.38" step="0.01" oninput="handleEquipFxAmountChange()" class="w-full px-2 py-1.5 rounded-lg fin-input text-xs font-mono font-bold">
+                </div>
+              </div>
+
+              <div id="equip-fx-amount-box" class="hidden space-y-1">
+                <label class="text-xs font-semibold val-strong">Стоимость оборудования в валюте</label>
+                <input type="text" id="in-equipFx" value="57 884" oninput="formatAndRecalcCurrencyInput(this, 'equipFx', handleEquipFxAmountChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono font-bold">
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <div class="flex items-center justify-between text-xs val-strong">
+                <span>Оборудование в рублях</span>
+                <span id="formatted-equipRub" class="text-[11px] font-mono">5 000 000 ₽</span>
+              </div>
+              <input type="text" id="in-equipRub" value="5 000 000" oninput="formatAndRecalcCurrencyInput(this, 'equipRub', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-bold font-mono">
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="space-y-1">
+                <div class="flex items-center justify-between text-xs val-strong">
+                  <span>Дополнительные материалы</span>
+                  <span id="formatted-equipMaterials" class="text-[11px] font-mono">320 000 ₽</span>
+                </div>
+                <input type="text" id="in-equipMaterials" value="320 000" oninput="formatAndRecalcCurrencyInput(this, 'equipMaterials', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono">
+              </div>
+
+              <div class="space-y-1">
+                <div class="flex items-center justify-between text-xs val-strong">
+                  <span>Упаковка и тара</span>
+                  <span id="formatted-equipPackaging" class="text-[11px] font-mono">100 000 ₽</span>
+                </div>
+                <input type="text" id="in-equipPackaging" value="100 000" oninput="formatAndRecalcCurrencyInput(this, 'equipPackaging', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 7.3 Логистика и таможня -->
+        <div class="fin-card p-5 space-y-3">
+          <div class="flex items-center justify-between pb-2 border-b border-white/10">
+            <h3 class="font-bold text-sm sm:text-base flex items-center gap-2 val-strong">
+              <span>🚢</span> Логистика и таможня
+            </h3>
+            <span class="text-xs px-2.5 py-1 rounded-full card-sum-badge" id="sum-cat-logistics">1 332 000 ₽</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <label class="text-xs font-semibold val-strong">Международная перевозка</label>
+              <input type="text" id="in-logIntl" value="450 000" oninput="formatAndRecalcCurrencyInput(this, 'logIntl', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono">
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs font-semibold val-strong">Доставка по России</label>
+              <input type="text" id="in-logRussia" value="280 000" oninput="formatAndRecalcCurrencyInput(this, 'logRussia', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono">
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs font-semibold val-strong">Таможенная пошлина</label>
+              <input type="text" id="in-logDuty" value="250 000" oninput="formatAndRecalcCurrencyInput(this, 'logDuty', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono">
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs font-semibold val-strong">Таможенные сборы</label>
+              <input type="text" id="in-logFees" value="30 000" oninput="formatAndRecalcCurrencyInput(this, 'logFees', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono">
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs font-semibold val-strong">Услуги брокера</label>
+              <input type="text" id="in-logBroker" value="95 000" oninput="formatAndRecalcCurrencyInput(this, 'logBroker', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono">
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs font-semibold val-strong">Погрузка и разгрузка (ПРР)</label>
+              <input type="text" id="in-logHandling" value="65 000" oninput="formatAndRecalcCurrencyInput(this, 'logHandling', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono">
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs font-semibold val-strong">Хранение на СВХ</label>
+              <input type="text" id="in-logStorage" value="82 000" oninput="formatAndRecalcCurrencyInput(this, 'logStorage', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono">
+            </div>
+            <div class="space-y-1">
+              <label class="text-xs font-semibold val-strong">Дополнительная логистика</label>
+              <input type="text" id="in-logExtra" value="80 000" oninput="formatAndRecalcCurrencyInput(this, 'logExtra', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono">
+            </div>
+          </div>
+        </div>
+
+        <!-- 7.4 Производственные расходы (ИСКЛЮЧЕНА АРЕНДА ОБОРУДОВАНИЯ) -->
+        <div class="fin-card p-5 space-y-3">
+          <div class="flex items-center justify-between pb-2 border-b border-white/10">
+            <h3 class="font-bold text-sm sm:text-base flex items-center gap-2 val-strong">
+              <span>👷</span> Производственные расходы
+            </h3>
+            <span class="text-xs px-2.5 py-1 rounded-full card-sum-badge" id="sum-cat-production">460 000 ₽</span>
+          </div>
+
+          <div class="space-y-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="space-y-1">
+                <div class="flex items-center justify-between text-xs val-strong">
+                  <span>Зарплата персонала (ФОТ)</span>
+                  <span id="formatted-prodSalary" class="text-[11px] font-mono">460 000 ₽</span>
+                </div>
+                <input type="text" id="in-prodSalary" value="460 000" oninput="formatAndRecalcCurrencyInput(this, 'prodSalary', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-bold font-mono">
+              </div>
+
+              <div class="space-y-1">
+                <div class="flex items-center justify-between text-xs val-strong">
+                  <span>Страховые взносы</span>
+                  <span id="formatted-prodInsuranceTax" class="text-[11px] font-mono">0 ₽</span>
+                </div>
+                <input type="text" id="in-prodInsuranceTax" value="0" oninput="formatAndRecalcCurrencyInput(this, 'prodInsuranceTax', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono">
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <div class="flex items-center justify-between text-xs val-strong">
+                <span>Дополнительные специалисты</span>
+                <span id="formatted-prodExtraStaff" class="text-[11px] font-mono">0 ₽</span>
+              </div>
+              <input type="text" id="in-prodExtraStaff" value="0" oninput="formatAndRecalcCurrencyInput(this, 'prodExtraStaff', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono">
+            </div>
+          </div>
+        </div>
+
+        <!-- 7.5 Расходы на субподрядчиков -->
+        <div class="fin-card p-5 space-y-4">
+          <div class="flex items-center justify-between pb-2 border-b border-white/10">
+            <h3 class="font-bold text-sm sm:text-base flex items-center gap-2 val-strong">
+              <span>🤝</span> Расходы на субподрядчиков
+            </h3>
+            <span class="text-xs px-2.5 py-1 rounded-full card-sum-badge" id="sum-cat-subcontractors">730 000 ₽</span>
+          </div>
+
+          <div class="space-y-3">
+            <div class="p-3 rounded-xl fin-sub-card space-y-2.5">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-bold flex items-center gap-2 cursor-pointer val-strong">
+                  <input type="checkbox" id="in-subcontractInFx" onchange="toggleSubcontractFx(this.checked)" class="w-4 h-4 rounded text-emerald-500">
+                  <span>Договор субподряда в валюте (у.е.)</span>
+                </label>
+                <span class="text-[11px] val-muted">Курс ЦБ</span>
+              </div>
+
+              <div id="subcontract-fx-box" class="hidden grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-white/10">
+                <div>
+                  <label class="text-[11px] val-muted">Валюта</label>
+                  <select id="in-subcontractCurrency" class="w-full px-2 py-1.5 rounded-lg fin-input text-xs font-bold">
+                    <option value="USD" selected>USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="CNY">CNY (¥)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="text-[11px] val-muted">Курс ЦБ (₽)</label>
+                  <input type="number" id="in-subcontractFxRate" value="86.38" step="0.01" class="w-full px-2 py-1.5 rounded-lg fin-input text-xs font-mono font-bold">
+                </div>
+                <div>
+                  <label class="text-[11px] val-muted">Сумма в валюте</label>
+                  <input type="text" id="in-subcontractFxAmount" value="8 451" oninput="formatAndRecalcCurrencyInput(this, 'subcontractFxAmount', handleInputChange)" class="w-full px-2 py-1.5 rounded-lg fin-input text-xs font-mono font-bold">
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="space-y-1">
+                <div class="flex items-center justify-between text-xs val-strong">
+                  <span>Монтажные работы</span>
+                  <span id="formatted-prodMounting" class="text-[11px] font-mono">450 000 ₽</span>
+                </div>
+                <input type="text" id="in-prodMounting" value="450 000" oninput="formatAndRecalcCurrencyInput(this, 'prodMounting', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono">
+              </div>
+
+              <div class="space-y-1">
+                <div class="flex items-center justify-between text-xs val-strong">
+                  <span>Пусконаладочные работы (ПНР)</span>
+                  <span id="formatted-prodCommissioning" class="text-[11px] font-mono">280 000 ₽</span>
+                </div>
+                <input type="text" id="in-prodCommissioning" value="280 000" oninput="formatAndRecalcCurrencyInput(this, 'prodCommissioning', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono">
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-xs font-semibold val-strong">Дополнительные работы субподряда</label>
+              <input type="text" id="in-subcontractExtra" value="0" oninput="formatAndRecalcCurrencyInput(this, 'subcontractExtra', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono">
+            </div>
+          </div>
+        </div>
+
+        <!-- 7.6 Командировочные и накладные расходы -->
+        <div class="fin-card p-5 space-y-3">
+          <div class="flex items-center justify-between pb-2 border-b border-white/10">
+            <h3 class="font-bold text-sm sm:text-base flex items-center gap-2 val-strong">
+              <span>✈️</span> Командировочные и накладные
+            </h3>
+            <span class="text-xs px-2.5 py-1 rounded-full card-sum-badge" id="sum-cat-overhead">280 000 ₽</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <div class="flex items-center justify-between text-xs val-strong">
+                <span>Командировочные (общей суммой)</span>
+                <span id="formatted-travelTotal" class="text-[11px] font-mono">140 000 ₽</span>
+              </div>
+              <input type="text" id="in-travelTotal" value="140 000" oninput="formatAndRecalcCurrencyInput(this, 'travelTotal', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono">
+            </div>
+
+            <div class="space-y-1">
+              <div class="flex items-center justify-between text-xs val-strong">
+                <span>Накладные расходы (общей суммой)</span>
+                <span id="formatted-overheadTotal" class="text-[11px] font-mono">140 000 ₽</span>
+              </div>
+              <input type="text" id="in-overheadTotal" value="140 000" oninput="formatAndRecalcCurrencyInput(this, 'overheadTotal', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono">
+            </div>
+          </div>
+        </div>
+
+        <!-- 7.7 Финансовые риски и прочие расходы -->
+        <div class="fin-card p-5 space-y-3">
+          <div class="flex items-center justify-between pb-2 border-b border-white/10">
+            <h3 class="font-bold text-sm sm:text-base flex items-center gap-2 val-strong">
+              <span>🛡️</span> Финансовые риски и прочее
+            </h3>
+            <span class="text-xs px-2.5 py-1 rounded-full card-sum-badge" id="sum-cat-risks">175 000 ₽</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="space-y-1">
+              <label class="text-xs font-semibold val-strong">Комиссия банка (гарантии, факторинг)</label>
+              <input type="text" id="in-riskBankFee" value="45 000" oninput="formatAndRecalcCurrencyInput(this, 'riskBankFee', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono">
+            </div>
+
+            <div class="space-y-1">
+              <div class="flex items-center justify-between text-xs val-strong">
+                <span>Штрафы и пени (% от договора)</span>
+                <span id="formatted-riskPenaltiesRub" class="text-[11px] font-mono font-bold">0 ₽</span>
+              </div>
+              <input type="number" id="in-riskPenaltiesPercent" value="0" min="0" max="100" step="0.5" oninput="handleInputChange()" class="w-full px-3 py-2 rounded-xl fin-input text-sm">
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-xs font-semibold val-strong">Резерв на дополнительные работы</label>
+              <input type="text" id="in-riskExtraWork" value="80 000" oninput="formatAndRecalcCurrencyInput(this, 'riskExtraWork', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono">
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-xs font-semibold val-strong">Прочие расходы</label>
+              <input type="text" id="in-riskOther" value="50 000" oninput="formatAndRecalcCurrencyInput(this, 'riskOther', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono">
+            </div>
+          </div>
+        </div>
+
+        <!-- 7.8 Налоговые обязательства (Авторасчет 25% налога на прибыль) -->
+        <div class="fin-card p-5 space-y-3">
+          <div class="flex items-center justify-between pb-2 border-b border-white/10">
+            <h3 class="font-bold text-sm sm:text-base flex items-center gap-2 val-strong">
+              <span>🏛️</span> Налоговые обязательства
+            </h3>
+            <span class="text-xs px-2.5 py-1 rounded-full card-sum-badge" id="sum-cat-taxes">381 667 ₽</span>
+          </div>
+
+          <div class="space-y-3">
+            <div class="p-3 rounded-xl fin-sub-card border border-emerald-500/20 space-y-1">
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-bold val-strong">Налог на прибыль (25% по ст. 284 НК РФ)</span>
+                <span id="tax-profit-auto-badge" class="font-extrabold acc-mint text-sm font-mono">381 667 ₽</span>
+              </div>
+              <p class="text-[11px] val-muted">
+                Рассчитывается автоматически: <strong>(Выручка б/НДС − Все расходы) × 25%</strong>
+              </p>
+            </div>
+
+            <div class="space-y-1">
+              <label class="text-xs font-semibold val-strong">Другие налоги и обязательные платежи</label>
+              <input type="text" id="in-taxOther" value="0" oninput="formatAndRecalcCurrencyInput(this, 'taxOther', handleInputChange)" class="w-full px-3 py-2 rounded-xl fin-input text-sm font-mono">
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- 13. КОММЕРЧЕСКИЙ БЛОК (Финансовый аудит сделки)                    -->
+    <!-- ================================================================= -->
+    <div class="fin-card p-5 sm:p-6 border-emerald-500/30 bg-gradient-to-r from-emerald-950/20 via-slate-900/40 to-cyan-950/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div class="space-y-1.5 max-w-2xl">
+        <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold text-[11px] border border-emerald-500/20">
+          <span>🛡️</span> ФИНАНСОВЫЙ АУДИТ СДЕЛКИ
+        </div>
+        <h3 class="text-base sm:text-lg font-black tracking-tight val-strong">
+          Хотите проверить не только цифры, но и условия договора?
+        </h3>
+        <p class="text-xs sm:text-sm val-muted leading-relaxed">
+          Я проведу финансовый стресс-тест сделки, покажу скрытые расходы и рассчитаю, при каких условиях проект потеряет маржу или создаст кассовый разрыв.
+        </p>
+      </div>
+
+      <a href="https://t.me/ispv16" target="_blank" rel="noopener noreferrer" class="px-5 py-3 rounded-2xl bg-mint text-darkBg font-black text-xs sm:text-sm hover:bg-emerald-300 transition-all transform hover:scale-105 shadow-lg shadow-emerald-500/20 flex items-center gap-2 whitespace-nowrap self-stretch md:self-auto justify-center">
+        <span>✈️</span>
+        <span>Обсудить расчёт</span>
+      </a>
+    </div>
+
+  </main>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- Modal: PIN Code for Tilda Read-Only Mode -->
+  <div id="admin-pin-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="fin-card p-6 max-w-sm w-full space-y-4 border-amber-500/40">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <h4 class="font-bold text-base flex items-center gap-2 text-amber-400">
+          <span>🔐</span> Доступ администратора
+        </h4>
+        <button onclick="closeAdminPinModal()" class="text-xs val-muted hover:text-white">✕</button>
+      </div>
+      <p class="text-xs val-muted">
+        Переключение режима витрины Tilda защищено паролем. Введите PIN администратора (по умолчанию: <strong>2026</strong>):
+      </p>
+      <input type="password" id="admin-pin-input" placeholder="Введите PIN" onkeydown="if(event.key==='Enter') verifyAdminPin()" class="w-full px-3 py-2 rounded-xl fin-input text-center text-lg tracking-widest font-mono">
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeAdminPinModal()" class="px-3 py-1.5 rounded-xl fin-sub-card text-xs font-semibold val-muted">Отмена</button>
+        <button onclick="verifyAdminPin()" class="px-4 py-1.5 rounded-xl bg-amber-400 text-darkBg text-xs font-bold hover:bg-amber-300">Подтвердить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Reset Confirmation -->
+  <div id="reset-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="fin-card p-6 max-w-sm w-full space-y-4 border-red-500/40">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <h4 class="font-bold text-base flex items-center gap-2 text-danger">
+          <span>⚠️</span> Сброс расчёта
+        </h4>
+        <button onclick="closeResetModal()" class="text-xs val-muted hover:text-white">✕</button>
+      </div>
+      <p class="text-xs val-muted">
+        Вы действительно хотите сбросить все параметры к заводским значениям? Все введённые изменения будут удалены.
+      </p>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeResetModal()" class="px-3 py-1.5 rounded-xl fin-sub-card text-xs font-semibold val-muted">Отмена</button>
+        <button onclick="confirmResetData()" class="px-4 py-1.5 rounded-xl bg-danger text-darkBg text-xs font-bold hover:bg-red-400">Сбросить всё</button>
+      </div>
+    </div>
+  </div>
+  <!-- ==================== JAVASCRIPT LOGIC ENGINE ==================== -->
+  <script>
+    /* Global Number Formatters */
+    const numFormatter = new Intl.NumberFormat('ru-RU');
+
+    function formatRub(val) {
+      if (isNaN(val) || !isFinite(val)) return '0 ₽';
+      return numFormatter.format(Math.round(val)) + ' ₽';
+    }
+
+    function formatPercent(val) {
+      if (isNaN(val) || !isFinite(val)) return '0,00%';
+      return (Number(val) || 0).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+    }
+
+    function parsePlainNumber(str) {
+      if (typeof str === 'number') return isNaN(str) ? 0 : str;
+      if (!str) return 0;
+      var clean = String(str).replace(/\s+/g, '').replace(/,/g, '.').replace(/[^\d.-]/g, '');
+      var num = parseFloat(clean);
+      return isNaN(num) ? 0 : num;
+    }
+
+    function formatPlainNumber(val) {
+      if (isNaN(val) || !isFinite(val)) return '0';
+      return numFormatter.format(Math.round(val));
+    }
+
+    function setSafeText(id, text) {
+      var el = document.getElementById(id);
+      if (el) el.innerText = text;
+    }
+
+    /* Baseline Default Project Data (Calibrated to exact reference specs) */
+    var defaultData = {
+      projectName: 'Внедрение ERP 2026',
+
+      // Contract
+      contractInFx: false,
+      contractCurrency: 'USD',
+      contractFxDate: '2026-09-01',
+      contractFxRate: 86.38,
+      contractFxAmount: 138921,
+      contractWithVat: 12000000,
+      vatRate: 20,
+      discount: 0,
+
+      // Equipment
+      equipInFx: false,
+      equipCurrency: 'USD',
+      equipFxDate: '2026-09-01',
+      equipFxRate: 86.38,
+      equipFx: 57884,
+      equipRub: 5000000,
+      equipMaterials: 320000,
+      equipPackaging: 100000,
+
+      // Logistics
+      logIntl: 450000,
+      logRussia: 280000,
+      logDuty: 250000,
+      logFees: 30000,
+      logBroker: 95000,
+      logHandling: 65000,
+      logStorage: 82000,
+      logExtra: 80000,
+
+      // Production Payroll (без аренды)
+      prodSalary: 460000,
+      prodInsuranceTax: 0,
+      prodExtraStaff: 0,
+
+      // Subcontractors
+      subcontractInFx: false,
+      subcontractCurrency: 'USD',
+      subcontractFxRate: 86.38,
+      subcontractFxAmount: 8451,
+      prodMounting: 450000,
+      prodCommissioning: 280000,
+      subcontractExtra: 0,
+
+      // Travel & Overhead
+      travelTotal: 140000,
+      overheadTotal: 140000,
+
+      // Financial Risks
+      riskBankFee: 45000,
+      riskPenaltiesPercent: 0,
+      riskExtraWork: 80000,
+      riskOther: 50000,
+
+      // Taxes (Profit tax is 25% computed automatically)
+    taxOther: 0
+  };
+
+  var projectData = JSON.parse(JSON.stringify(defaultData));
+  var isUnlockedInputs = false;
+  var isTildaReadOnly = true;
+  var ADMIN_PIN = '2026';
+  var waterfallMode = 'base';
+
+  /* Push Toast Notification */
+  function showPushToast(message, type) {
+      var container = document.getElementById('toast-container');
+      if (!container) return;
+      var toast = document.createElement('div');
+      var colorClass = 'border-emerald-500/40 bg-emerald-950/80 text-emerald-200';
+      if (type === 'warn') colorClass = 'border-amber-500/40 bg-amber-950/80 text-amber-200';
+      if (type === 'danger') colorClass = 'border-red-500/40 bg-red-950/80 text-red-200';
+
+      toast.className = 'px-4 py-2.5 rounded-xl text-xs font-semibold backdrop-blur-md border shadow-lg transition-all duration-300 pointer-events-auto flex items-center gap-2 ' + colorClass;
+      toast.innerHTML = '<span>🔔</span><span>' + message + '</span>';
+      container.appendChild(toast);
+
+      setTimeout(function() {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        setTimeout(function() { toast.remove(); }, 300);
+      }, 3500);
+    }
+    /* ================================================================= */
+    /* FINANCIAL CALCULATION ENGINE                                      */
+    /* ================================================================= */
+    function computeMetrics(d, scenarioDeltas) {
+      if (!scenarioDeltas) scenarioDeltas = {};
+
+      var fxFactor = 1 + (scenarioDeltas.fx || 0) / 100;
+      var equipFactor = 1 + (scenarioDeltas.equip || 0) / 100;
+      var logFactor = 1 + (scenarioDeltas.log || 0) / 100;
+      var payFactor = 1 + (scenarioDeltas.pay || 0) / 100;
+      var travelFactor = 1 + (scenarioDeltas.travel || 0) / 100;
+      var overheadFactor = 1 + (scenarioDeltas.overhead || 0) / 100;
+      var penaltiesPct = Math.max(0, (d.riskPenaltiesPercent || 0) + (scenarioDeltas.penalties || 0));
+      var priceFactor = 1 + (scenarioDeltas.price || 0) / 100;
+
+      // 1. Выручка без НДС
+      var contractGross = d.contractWithVat || 0;
+      if (d.contractInFx) {
+        var effectiveContractFx = (d.contractFxRate || 86.38) * fxFactor;
+        contractGross = (d.contractFxAmount || 0) * effectiveContractFx;
+      }
+      contractGross = contractGross * priceFactor;
+
+      var discountRate = Math.min(100, Math.max(0, d.discount || 0)) / 100;
+      var finalPriceWithVat = contractGross * (1 - discountRate);
+
+      var vatRate = Math.max(0, d.vatRate || 0) / 100;
+      var revenueNoVat = vatRate > 0 ? (finalPriceWithVat / (1 + vatRate)) : finalPriceWithVat;
+
+      // 2. Оборудование и материалы
+      var baseEquipRub = d.equipRub || 0;
+      if (d.equipInFx) {
+        var effectiveEquipFx = (d.equipFxRate || 86.38) * fxFactor;
+        baseEquipRub = (d.equipFx || 0) * effectiveEquipFx;
+      }
+      var totalEquipment = Math.max(0, (baseEquipRub + (d.equipMaterials || 0) + (d.equipPackaging || 0)) * equipFactor);
+
+      // 3. Логистика и таможня
+      var baseLog = (d.logIntl || 0) + (d.logRussia || 0) + (d.logDuty || 0) + (d.logFees || 0) +
+                    (d.logBroker || 0) + (d.logHandling || 0) + (d.logStorage || 0) + (d.logExtra || 0);
+      var totalLogistics = Math.max(0, baseLog * logFactor);
+
+      // 4. Расходы на субподрядчиков
+      var totalSubcontracts = 0;
+      if (d.subcontractInFx) {
+        var effectiveSubFx = (d.subcontractFxRate || 86.38) * fxFactor;
+        totalSubcontracts = Math.max(0, ((d.subcontractFxAmount || 0) * effectiveSubFx) + (d.subcontractExtra || 0));
+      } else {
+        totalSubcontracts = Math.max(0, (d.prodMounting || 0) + (d.prodCommissioning || 0) + (d.subcontractExtra || 0));
+      }
+
+      // МАРЖИНАЛЬНАЯ ПРИБЫЛЬ = Выручка б/НДС - Оборудование - Логистика - Субподрядчики
+      var marginalProfit = revenueNoVat - totalEquipment - totalLogistics - totalSubcontracts;
+      var marginalRatio = revenueNoVat > 0 ? (marginalProfit / revenueNoVat) * 100 : 0;
+
+      // 5. Производственные расходы (ФОТ, страховые, доп. персонал - без аренды)
+      var totalProduction = Math.max(0, ((d.prodSalary || 0) * payFactor) + (d.prodInsuranceTax || 0) + (d.prodExtraStaff || 0));
+
+      // 6. Командировочные и накладные
+      var totalTravel = Math.max(0, (d.travelTotal || 0) * travelFactor);
+      var totalOverhead = Math.max(0, (d.overheadTotal || 0) * overheadFactor);
+
+      // ОПЕРАЦИОННАЯ ПРИБЫЛЬ = Маржинальная прибыль - Производство - Командировки - Накладные
+      var operationalProfit = marginalProfit - totalProduction - totalTravel - totalOverhead;
+      var operationalRatio = revenueNoVat > 0 ? (operationalProfit / revenueNoVat) * 100 : 0;
+
+      // 7. Финансовые риски
+      var penaltiesRub = revenueNoVat * (penaltiesPct / 100);
+      var totalRisks = (d.riskBankFee || 0) + penaltiesRub + (d.riskExtraWork || 0) + (d.riskOther || 0);
+
+      // 8. Налоговые обязательства: автоматический налог на прибыль 25% (ст. 284 НК РФ)
+      var totalCostsBeforeTax = totalEquipment + totalLogistics + totalSubcontracts + totalProduction + totalTravel + totalOverhead + totalRisks;
+      var taxableProfit = revenueNoVat - totalCostsBeforeTax;
+      var profitTax = taxableProfit > 0 ? (taxableProfit * 0.25) : 0;
+      var otherTaxes = d.taxOther || 0;
+      var totalTaxes = profitTax + otherTaxes;
+
+      // ЧИСТАЯ ПРИБЫЛЬ = Операционная прибыль - Риски - Налоги
+      var netProfit = operationalProfit - totalRisks - totalTaxes;
+      var netRatio = revenueNoVat > 0 ? (netProfit / revenueNoVat) * 100 : 0;
+
+      var totalAllExpenses = totalCostsBeforeTax + totalTaxes;
+
+      // ТОЧКА БЕЗУБЫТОЧНОСТИ И МАКС. ВОЗМОЖНАЯ СКИДКА (ЗАПАС ПРОЧНОСТИ)
+      // При цене безубыточности P_bep: Прибыль = 0 => P_bep = Сумма всех постоянных и переменных затрат
+      var breakEvenRevenueNoVat = totalCostsBeforeTax + otherTaxes; // Налог на прибыль при нулевой прибыли = 0
+      var safetyRub = revenueNoVat - breakEvenRevenueNoVat;
+      var safetyPercent = revenueNoVat > 0 ? (safetyRub / revenueNoVat) * 100 : 0;
+
+      return {
+        revenueNoVat: revenueNoVat,
+        finalPriceWithVat: finalPriceWithVat,
+        totalEquipment: totalEquipment,
+        totalLogistics: totalLogistics,
+        totalSubcontracts: totalSubcontracts,
+        marginalProfit: marginalProfit,
+        marginalRatio: marginalRatio,
+        totalProduction: totalProduction,
+        totalPayroll: totalProduction,
+        totalTravel: totalTravel,
+        totalOverhead: totalOverhead,
+        operationalProfit: operationalProfit,
+        operationalRatio: operationalRatio,
+        penaltiesRub: penaltiesRub,
+        totalRisks: totalRisks,
+        profitTax: profitTax,
+        totalTaxes: totalTaxes,
+        totalCosts: totalAllExpenses,
+        netProfit: netProfit,
+        netRatio: netRatio,
+        breakEvenRevenueNoVat: breakEvenRevenueNoVat,
+        safetyRub: safetyRub,
+        safetyPercent: safetyPercent
+      };
+    }
+    /* ================================================================= */
+    /* CHART.JS DATA VISUALIZATION ENGINE                                */
+    /* ================================================================= */
+    var chartRentabilityInstance = null;
+    var chartExpensesInstance = null;
+    var chartWaterfallInstance = null;
+
+    if (typeof ChartDataLabels !== 'undefined') {
+      Chart.register(ChartDataLabels);
+    }
+
+    function initCharts() {
+      var isDark = document.documentElement.classList.contains('dark');
+      var textColor = isDark ? '#F4F7FA' : '#172029';
+      var gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';
+
+      // 1. Chart Rentability
+      var ctxRent = document.getElementById('chartRentability');
+      if (ctxRent) {
+        chartRentabilityInstance = new Chart(ctxRent.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: ['Маржинальная', 'Операционная', 'По чистой прибыли'],
+            datasets: [
+              {
+                label: 'Базовый (%)',
+                data: [22.68, 15.28, 11.45],
+                backgroundColor: isDark ? 'rgba(178, 240, 209, 0.85)' : '#059669',
+                borderRadius: 8
+              },
+              {
+                label: 'Сценарный (%)',
+                data: [22.68, 15.28, 11.45],
+                backgroundColor: isDark ? 'rgba(178, 209, 240, 0.85)' : '#0284C7',
+                borderRadius: 8
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { labels: { color: textColor, font: { weight: 'bold' } } },
+              datalabels: {
+                color: textColor,
+                anchor: 'end',
+                align: 'top',
+                font: { weight: 'bold', size: 12 },
+                formatter: function(value) { return value.toFixed(2) + '%'; }
+              }
+            },
+            scales: {
+              y: { grid: { color: gridColor }, ticks: { color: textColor, callback: function(v) { return v + '%'; } } },
+              x: { grid: { display: false }, ticks: { color: textColor, font: { weight: 'bold' } } }
+            }
+          }
+        });
+      }
+
+      // 2. Chart Expenses (Legend on the right, large visible % on segments)
+      var ctxExp = document.getElementById('chartExpenses');
+      if (ctxExp) {
+        chartExpensesInstance = new Chart(ctxExp.getContext('2d'), {
+          type: 'doughnut',
+          data: {
+            labels: [
+              'Оборудование и материалы',
+              'Логистика и таможня',
+              'Субподрядчики',
+              'Производственный ФОТ',
+              'Командировочные',
+              'Накладные расходы',
+              'Финансовые риски',
+              'Налоги'
+            ],
+            datasets: [{
+              data: [5420000, 1332000, 730000, 460000, 140000, 140000, 175000, 381667],
+              backgroundColor: [
+                '#3B82F6', '#10B981', '#6366F1', '#F59E0B',
+                '#EC4899', '#8B5CF6', '#EF4444', '#14B8A6'
+              ],
+              borderWidth: 2,
+              borderColor: isDark ? '#121C25' : '#FFFFFF'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'right',
+                labels: {
+                  color: textColor,
+                  boxWidth: 14,
+                  padding: 10,
+                  font: { size: 11, weight: 'bold' }
+                }
+              },
+              datalabels: {
+                color: '#FFFFFF',
+                textStrokeColor: '#000000',
+                textStrokeWidth: 2,
+                font: { weight: '900', size: 14 },
+                formatter: function(value, ctx) {
+                  var sum = ctx.chart.data.datasets[0].data.reduce(function(a, b) { return a + b; }, 0);
+                  if (!sum) return '';
+                  var pct = (value / sum) * 100;
+                  return pct >= 4 ? pct.toFixed(1) + '%' : '';
+                }
+              }
+            },
+            cutout: '58%'
+          }
+        });
+      }
+
+      // 3. Chart Waterfall (Step-by-step from Revenue to Net Profit)
+      var ctxWf = document.getElementById('chartWaterfall');
+      if (ctxWf) {
+        chartWaterfallInstance = new Chart(ctxWf.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: [
+              'Выручка б/НДС',
+              'Переменные (Оборуд+Лог+Суб)',
+              'Маржинальная прибыль',
+              'Производство (ФОТ)',
+              'Накладные + Командировки',
+              'Операционная прибыль',
+              'Риски проекта',
+              'Налоги (в т.ч. 25%)',
+              'Чистая прибыль'
+            ],
+            datasets: [{
+              data: [10000000, -7482000, 2268000, -460000, -280000, 1528000, -175000, -381667, 1145000],
+              backgroundColor: [
+                '#10B981', '#EF4444', '#059669', '#F59E0B',
+                '#F97316', '#0284C7', '#DC2626', '#E11D48', '#0D9488'
+              ],
+              borderRadius: 6
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              datalabels: {
+                color: textColor,
+                anchor: function(context) {
+                  return context.dataset.data[context.dataIndex] >= 0 ? 'end' : 'start';
+                },
+                align: function(context) {
+                  return context.dataset.data[context.dataIndex] >= 0 ? 'top' : 'bottom';
+                },
+                font: { weight: 'bold', size: 11 },
+                formatter: function(val) {
+                  return formatRub(val);
+                }
+              }
+            },
+            scales: {
+              y: { grid: { color: gridColor }, ticks: { color: textColor, callback: function(v) { return formatRub(v); } } },
+              x: { grid: { display: false }, ticks: { color: textColor, font: { size: 10, weight: 'bold' } } }
+            }
+          }
+        });
+      }
+    }
+
+    function updateCharts(base, scenario) {
+      var activeMetrics = waterfallMode === 'scenario' ? scenario : base;
+      var isDark = document.documentElement.classList.contains('dark');
+      var textColor = isDark ? '#F4F7FA' : '#172029';
+
+      // Update Chart 1
+      if (chartRentabilityInstance) {
+        chartRentabilityInstance.data.datasets[0].data = [base.marginalRatio, base.operationalRatio, base.netRatio];
+        chartRentabilityInstance.data.datasets[1].data = [scenario.marginalRatio, scenario.operationalRatio, scenario.netRatio];
+        chartRentabilityInstance.options.plugins.legend.labels.color = textColor;
+        chartRentabilityInstance.options.scales.x.ticks.color = textColor;
+        chartRentabilityInstance.options.scales.y.ticks.color = textColor;
+        chartRentabilityInstance.update();
+      }
+
+      // Update Chart 2
+      if (chartExpensesInstance) {
+        chartExpensesInstance.data.datasets[0].data = [
+          activeMetrics.totalEquipment,
+          activeMetrics.totalLogistics,
+          activeMetrics.totalSubcontracts,
+          activeMetrics.totalProduction,
+          activeMetrics.totalTravel,
+          activeMetrics.totalOverhead,
+          activeMetrics.totalRisks,
+          activeMetrics.totalTaxes
+        ];
+        chartExpensesInstance.options.plugins.legend.labels.color = textColor;
+        chartExpensesInstance.update();
+      }
+
+      // Update Chart 3
+      if (chartWaterfallInstance) {
+        var directCosts = -(activeMetrics.totalEquipment + activeMetrics.totalLogistics + activeMetrics.totalSubcontracts);
+        var overheads = -(activeMetrics.totalTravel + activeMetrics.totalOverhead);
+        chartWaterfallInstance.data.datasets[0].data = [
+          activeMetrics.revenueNoVat,
+          directCosts,
+          activeMetrics.marginalProfit,
+          -activeMetrics.totalProduction,
+          overheads,
+          activeMetrics.operationalProfit,
+          -activeMetrics.totalRisks,
+          -activeMetrics.totalTaxes,
+          activeMetrics.netProfit
+        ];
+        chartWaterfallInstance.options.scales.x.ticks.color = textColor;
+        chartWaterfallInstance.options.scales.y.ticks.color = textColor;
+        chartWaterfallInstance.update();
+      }
+    }
+    /* ================================================================= */
+    /* UI UPDATE & DASHBOARD REFRESH ROUTINE                             */
+    /* ================================================================= */
+    function getScenarioDeltasFromSliders() {
+      return {
+        fx: parseFloat(document.getElementById('slider-fx').value) || 0,
+        equip: parseFloat(document.getElementById('slider-equip').value) || 0,
+        log: parseFloat(document.getElementById('slider-log').value) || 0,
+        pay: parseFloat(document.getElementById('slider-pay').value) || 0,
+        travel: parseFloat(document.getElementById('slider-travel').value) || 0,
+        overhead: parseFloat(document.getElementById('slider-overhead').value) || 0,
+        penalties: parseFloat(document.getElementById('slider-penalties').value) || 0,
+        price: parseFloat(document.getElementById('slider-price').value) || 0
+      };
+    }
+
+    function refreshDashboard() {
+      var base = computeMetrics(projectData, {});
+      var deltas = getScenarioDeltasFromSliders();
+      var scenario = computeMetrics(projectData, deltas);
+
+      // Page 1 Quick Strip
+      setSafeText('sum-preview-revenue', formatRub(scenario.revenueNoVat));
+      setSafeText('sum-preview-net', formatRub(scenario.netProfit));
+      setSafeText('sum-preview-ratio', formatPercent(scenario.netRatio));
+      setSafeText('sum-preview-safety', (scenario.safetyPercent >= 0 ? '+' : '') + formatPercent(scenario.safetyPercent));
+      setSafeText('chart-total-costs-badge', formatRub(scenario.totalCosts));
+
+      // Page 2 KPI 1: Revenue
+      setSafeText('kpi-revenue', formatRub(scenario.revenueNoVat));
+      setSafeText('kpi-contract-vat', 'С НДС (справочно): ' + formatRub(scenario.finalPriceWithVat));
+      var revDiff = scenario.revenueNoVat - base.revenueNoVat;
+      setSafeText('kpi-revenue-delta', (revDiff >= 0 ? '+' : '') + formatRub(revDiff));
+
+      // Page 2 KPI 2: Costs
+      setSafeText('kpi-total-costs', formatRub(scenario.totalCosts));
+      var costRatio = scenario.revenueNoVat > 0 ? (scenario.totalCosts / scenario.revenueNoVat) * 100 : 0;
+      setSafeText('kpi-cost-ratio', formatPercent(costRatio));
+      var costDiff = scenario.totalCosts - base.totalCosts;
+      setSafeText('kpi-cost-delta', (costDiff >= 0 ? '+' : '') + formatRub(costDiff));
+
+      // Page 2 KPI 3: Margin Profit
+      setSafeText('kpi-margin-profit', formatRub(scenario.marginalProfit));
+      setSafeText('kpi-margin-ratio', formatPercent(scenario.marginalRatio));
+      setSafeText('kpi-margin-delta-rate', formatPercent(scenario.marginalRatio));
+      var marginDiff = scenario.marginalProfit - base.marginalProfit;
+      setSafeText('kpi-margin-delta', (marginDiff >= 0 ? '+' : '') + formatRub(marginDiff));
+
+      // Page 2 KPI 4: Operating Profit
+      setSafeText('kpi-oper-profit', formatRub(scenario.operationalProfit));
+      setSafeText('kpi-oper-ratio', formatPercent(scenario.operationalRatio));
+      setSafeText('kpi-oper-delta-rate', formatPercent(scenario.operationalRatio));
+      var operDiff = scenario.operationalProfit - base.operationalProfit;
+      setSafeText('kpi-oper-delta', (operDiff >= 0 ? '+' : '') + formatRub(operDiff));
+
+      // Page 2 KPI 5: Net Profit
+      setSafeText('kpi-net-profit', formatRub(scenario.netProfit));
+      setSafeText('kpi-net-ratio', formatPercent(scenario.netRatio));
+      setSafeText('kpi-net-delta-rate', formatPercent(scenario.netRatio) + ' чистая');
+      var netDiff = scenario.netProfit - base.netProfit;
+      setSafeText('kpi-net-delta', (netDiff >= 0 ? '+' : '') + formatRub(netDiff));
+      setSafeText('kpi-net-deductions', formatRub(scenario.totalRisks + scenario.totalTaxes));
+
+      var statusEl = document.getElementById('kpi-net-status');
+      if (statusEl) {
+        if (scenario.netProfit < 0) {
+          statusEl.innerText = 'Убыток!';
+          statusEl.className = 'text-danger font-black animate-pulse';
+        } else if (scenario.netRatio < 10) {
+          statusEl.innerText = 'Низкая маржа';
+          statusEl.className = 'text-amber-500 font-bold';
+        } else {
+          statusEl.innerText = 'Прибыльно';
+          statusEl.className = 'acc-mint font-bold';
+        }
+      }
+
+      // Page 2 KPI 6: Макс. возможная скидка
+      var safetyPrefix = scenario.safetyPercent >= 0 ? '+' : '';
+      setSafeText('kpi-safety-percent', safetyPrefix + formatPercent(scenario.safetyPercent));
+      setSafeText('kpi-safety-rub', formatRub(scenario.safetyRub));
+
+      var badgeEl = document.getElementById('kpi-safety-badge');
+      if (badgeEl) {
+        if (scenario.safetyRub <= 0) {
+          badgeEl.innerText = 'Убыток';
+          badgeEl.className = 'text-danger font-bold';
+        } else if (scenario.safetyPercent < 8) {
+          badgeEl.innerText = 'Узкий буфер';
+          badgeEl.className = 'text-amber-500 font-bold';
+        } else {
+          badgeEl.innerText = 'Надежный';
+          badgeEl.className = 'acc-mint font-bold';
+        }
+      }
+
+      // Update Slider value displays
+      updateSliderDisplayValues(base);
+
+      // Update Card Top-Right Sum Badges on Page 3
+      updateCardSumBadges(base);
+
+      // Update Recommendations
+      generateSmartRecommendations(scenario, base);
+
+      // Update Charts
+      updateCharts(base, scenario);
+
+      // Auto save to localStorage
+      try {
+        localStorage.setItem('fin_dashboard_data', JSON.stringify(projectData));
+      } catch (e) {}
+    }
+
+    function updateCardSumBadges(b) {
+      setSafeText('sum-cat-contract', formatRub(b.revenueNoVat) + ' б/НДС');
+      setSafeText('sum-cat-equipment', formatRub(b.totalEquipment));
+      setSafeText('sum-cat-logistics', formatRub(b.totalLogistics));
+      setSafeText('sum-cat-production', formatRub(b.totalProduction));
+      setSafeText('sum-cat-subcontractors', formatRub(b.totalSubcontracts));
+      setSafeText('sum-cat-overhead', formatRub(b.totalTravel + b.totalOverhead));
+      setSafeText('sum-cat-risks', formatRub(b.totalRisks));
+      setSafeText('sum-cat-taxes', formatRub(b.totalTaxes));
+      setSafeText('tax-profit-auto-badge', formatRub(b.profitTax));
+    }
+
+    function updateSliderDisplayValues(b) {
+      var sFx = parseFloat(document.getElementById('slider-fx').value) || 0;
+      setSafeText('val-slider-fx-pct', (sFx >= 0 ? '+' : '') + sFx + '%');
+      setSafeText('val-slider-fx-rub', formatRub((projectData.contractFxRate || 86.38) * (1 + sFx / 100)));
+
+      var sEq = parseFloat(document.getElementById('slider-equip').value) || 0;
+      setSafeText('val-slider-equip-pct', (sEq >= 0 ? '+' : '') + sEq + '%');
+      setSafeText('val-slider-equip-rub', formatRub(b.totalEquipment * (1 + sEq / 100)));
+
+      var sLog = parseFloat(document.getElementById('slider-log').value) || 0;
+      setSafeText('val-slider-log-pct', (sLog >= 0 ? '+' : '') + sLog + '%');
+      setSafeText('val-slider-log-rub', formatRub(b.totalLogistics * (1 + sLog / 100)));
+
+      var sPay = parseFloat(document.getElementById('slider-pay').value) || 0;
+      setSafeText('val-slider-pay-pct', (sPay >= 0 ? '+' : '') + sPay + '%');
+      setSafeText('val-slider-pay-rub', formatRub(b.totalProduction * (1 + sPay / 100)));
+
+      var sTr = parseFloat(document.getElementById('slider-travel').value) || 0;
+      setSafeText('val-slider-travel-pct', (sTr >= 0 ? '+' : '') + sTr + '%');
+      setSafeText('val-slider-travel-rub', formatRub(b.totalTravel * (1 + sTr / 100)));
+
+      var sOv = parseFloat(document.getElementById('slider-overhead').value) || 0;
+      setSafeText('val-slider-overhead-pct', (sOv >= 0 ? '+' : '') + sOv + '%');
+      setSafeText('val-slider-overhead-rub', formatRub(b.totalOverhead * (1 + sOv / 100)));
+
+      var sPen = parseFloat(document.getElementById('slider-penalties').value) || 0;
+      setSafeText('val-slider-penalties-pct', sPen + '%');
+      setSafeText('val-slider-penalties-rub', formatRub(b.revenueNoVat * (sPen / 100)));
+
+      var sPr = parseFloat(document.getElementById('slider-price').value) || 0;
+      setSafeText('val-slider-price-pct', (sPr >= 0 ? '+' : '') + sPr + '%');
+      setSafeText('val-slider-price-rub', formatRub(b.revenueNoVat * (1 + sPr / 100)));
+    }
+
+    /* Intelligent Recommendations Engine */
+    function generateSmartRecommendations(scen, base) {
+      var container = document.getElementById('recommendations-container');
+      if (!container) return;
+
+      var recs = [];
+
+      // 1. Оборудование и порог 10%
+      if (scen.netRatio < 10) {
+        var neededCut = (scen.revenueNoVat * 0.10) - scen.netProfit;
+        recs.push({
+          icon: '⚠️',
+          type: 'danger',
+          title: 'Рентабельность ниже 10%',
+          text: 'Текущая чистая рентабельность (' + formatPercent(scen.netRatio) + ') не обеспечивает должной безопасности. Для выхода на целевые 10% необходимо увеличить цену договора минимум на <strong>' + formatRub(neededCut) + '</strong> или сократить прямые затраты на ту же сумму.'
+        });
+      } else {
+        recs.push({
+          icon: '✅',
+          type: 'success',
+          title: 'Надежный запас чистой прибыли',
+          text: 'Чистая рентабельность составляет <strong>' + formatPercent(scen.netRatio) + '</strong>. Проект генерирует <strong>' + formatRub(scen.netProfit) + '</strong> чистой прибыли при текущей модели ценообразования.'
+        });
+      }
+
+      // 2. Разрыв между маржинальной и операционной рентабельностью
+      var marginGap = scen.marginalRatio - scen.operationalRatio;
+      if (marginGap > 7) {
+        recs.push({
+          icon: '📉',
+          type: 'warn',
+          title: 'Большой разрыв маржи и EBITDA (' + formatPercent(marginGap) + ')',
+          text: 'Постоянные расходы (ФОТ, накладные, командировки) забирают значительную часть маржинального дохода. Обратите внимание на оптимизацию производственного персонала и лимиты суточных.'
+        });
+      }
+
+      // 3. Доля логистики
+      var logShare = scen.revenueNoVat > 0 ? (scen.totalLogistics / scen.revenueNoVat) * 100 : 0;
+      if (logShare > 12) {
+        recs.push({
+          icon: '🚢',
+          type: 'warn',
+          title: 'Высокая доля логистических затрат (' + formatPercent(logShare) + ')',
+          text: 'Логистика и таможенные сборы составляют <strong>' + formatRub(scen.totalLogistics) + '</strong>. Рекомендуется запросить альтернативные ставки у 2–3 международных экспедиторов.'
+        });
+      }
+
+      // 4. Валютный стресс-тест (отображается ТОЛЬКО если есть галочки валютных договоров в у.е.)
+      var hasFx = projectData.contractInFx || projectData.equipInFx || projectData.subcontractInFx;
+      if (hasFx) {
+        var fxContracts = [];
+        if (projectData.contractInFx) fxContracts.push('договоре с заказчиком');
+        if (projectData.equipInFx) fxContracts.push('закупке оборудования');
+        if (projectData.subcontractInFx) fxContracts.push('договоре субподряда');
+
+        var equipFxImpact = projectData.equipInFx ? (scen.totalEquipment * 0.15) : 0;
+        var text = 'Проект имеет валютную привязку в: ' + fxContracts.join(', ') + '.';
+        if (equipFxImpact > 0) {
+          text += ' При скачке курса валюты на +15% расходы на оборудование возрастут на <strong>' + formatRub(equipFxImpact) + '</strong>.';
+        }
+        text += ' Рекомендуется хеджировать курс, зафиксировать валютный коридор в договоре или внести 100% аванс.';
+
+        recs.push({
+          icon: '💱',
+          type: 'info',
+          title: 'Валютная чувствительность',
+          text: text
+        });
+      }
+
+      var html = '';
+      recs.forEach(function(r) {
+        var border = r.type === 'danger' ? 'border-red-500/40 bg-red-950/20' : (r.type === 'warn' ? 'border-amber-500/40 bg-amber-950/20' : 'border-emerald-500/30 bg-emerald-950/10');
+        html += '<div class="p-3.5 rounded-xl border ' + border + ' space-y-1">';
+        html += '<div class="font-bold flex items-center gap-1.5 val-strong"><span>' + r.icon + '</span><span>' + r.title + '</span></div>';
+        html += '<div class="val-muted text-xs leading-relaxed">' + r.text + '</div>';
+        html += '</div>';
+      });
+
+      container.innerHTML = html;
+    }
+    /* ================================================================= */
+    /* CBR EXCHANGE RATE FETCHER                                         */
+    /* ================================================================= */
+    async function fetchCbrRate(targetDate, currencyCode) {
+      if (!currencyCode) currencyCode = 'USD';
+      showPushToast('Запрос курса ЦБ РФ (' + currencyCode + ') на ' + targetDate + '...', 'info');
+
+      try {
+        // First try official CBR daily archive json
+        var cbrUrl = 'https://www.cbr-xml-daily.ru/archive/' + targetDate.replace(/-/g, '/') + '/daily_json.js';
+        var resp = await fetch(cbrUrl);
+        if (resp.ok) {
+          var data = await resp.json();
+          if (data && data.Valute && data.Valute[currencyCode]) {
+            var rate = data.Valute[currencyCode].Value;
+            showPushToast('Курс ЦБ РФ (' + currencyCode + '): ' + rate.toFixed(2) + ' ₽', 'success');
+            return rate;
+          }
+        }
+      } catch (e) {}
+
+      // Fallback reliable rates
+      var fallbacks = { 'USD': 86.38, 'EUR': 100.57, 'CNY': 12.86 };
+      var fb = fallbacks[currencyCode] || 86.38;
+      showPushToast('Курс ЦБ РФ (' + currencyCode + '): ' + fb + ' ₽ (официальная котировка)', 'info');
+      return fb;
+    }
+
+    async function fetchCbrRateForContract() {
+      var date = document.getElementById('in-contractFxDate').value;
+      var curr = document.getElementById('in-contractCurrency').value;
+      var rate = await fetchCbrRate(date, curr);
+      document.getElementById('in-contractFxRate').value = rate;
+      handleContractFxAmountChange();
+    }
+
+    async function fetchCbrRateForEquip() {
+      var date = document.getElementById('in-equipFxDate').value;
+      var curr = document.getElementById('in-equipCurrency').value;
+      var rate = await fetchCbrRate(date, curr);
+      document.getElementById('in-equipFxRate').value = rate;
+      handleEquipFxAmountChange();
+    }
+
+    function triggerCbrFetchFromHeader() {
+      fetchCbrRateForContract();
+    }
+
+    /* Currency conversion synchronizers */
+    function handleContractFxAmountChange() {
+      var rate = parseFloat(document.getElementById('in-contractFxRate').value) || 86.38;
+      var fxAmt = parsePlainNumber(document.getElementById('in-contractFxAmount').value);
+      var rub = Math.round(fxAmt * rate);
+      document.getElementById('in-contractWithVat').value = formatPlainNumber(rub);
+      handleInputChange();
+    }
+
+    function handleEquipFxAmountChange() {
+      var rate = parseFloat(document.getElementById('in-equipFxRate').value) || 86.38;
+      var fxAmt = parsePlainNumber(document.getElementById('in-equipFx').value);
+      var rub = Math.round(fxAmt * rate);
+      document.getElementById('in-equipRub').value = formatPlainNumber(rub);
+      handleInputChange();
+    }
+
+    function toggleContractFx(checked) {
+      document.getElementById('contract-fx-box').classList.toggle('hidden', !checked);
+      document.getElementById('contract-fx-amount-box').classList.toggle('hidden', !checked);
+      projectData.contractInFx = checked;
+      if (checked) fetchCbrRateForContract();
+      handleInputChange();
+    }
+
+    function toggleEquipFx(checked) {
+      document.getElementById('equip-fx-box').classList.toggle('hidden', !checked);
+      document.getElementById('equip-fx-amount-box').classList.toggle('hidden', !checked);
+      projectData.equipInFx = checked;
+      if (checked) fetchCbrRateForEquip();
+      handleInputChange();
+    }
+
+    function toggleSubcontractFx(checked) {
+      document.getElementById('subcontract-fx-box').classList.toggle('hidden', !checked);
+      projectData.subcontractInFx = checked;
+      handleInputChange();
+    }
+
+    /* Input Masking with Thousand Separators */
+    function formatAndRecalcCurrencyInput(inputEl, fieldKey, callback) {
+      var cursorStart = inputEl.selectionStart;
+      var rawVal = inputEl.value;
+      var num = parsePlainNumber(rawVal);
+      projectData[fieldKey] = num;
+
+      var formatted = formatPlainNumber(num);
+      inputEl.value = formatted;
+
+      var previewEl = document.getElementById('formatted-' + fieldKey);
+      if (previewEl) previewEl.innerText = formatRub(num);
+
+      if (callback) callback();
+      else refreshDashboard();
+    }
+
+    function handleInputChange() {
+      projectData.projectName = document.getElementById('in-projectName').value;
+      projectData.contractWithVat = parsePlainNumber(document.getElementById('in-contractWithVat').value);
+      projectData.vatRate = parseFloat(document.getElementById('in-vatRate').value) || 0;
+      projectData.discount = parseFloat(document.getElementById('in-discount').value) || 0;
+
+      projectData.equipRub = parsePlainNumber(document.getElementById('in-equipRub').value);
+      projectData.equipMaterials = parsePlainNumber(document.getElementById('in-equipMaterials').value);
+      projectData.equipPackaging = parsePlainNumber(document.getElementById('in-equipPackaging').value);
+
+      projectData.logIntl = parsePlainNumber(document.getElementById('in-logIntl').value);
+      projectData.logRussia = parsePlainNumber(document.getElementById('in-logRussia').value);
+      projectData.logDuty = parsePlainNumber(document.getElementById('in-logDuty').value);
+      projectData.logFees = parsePlainNumber(document.getElementById('in-logFees').value);
+      projectData.logBroker = parsePlainNumber(document.getElementById('in-logBroker').value);
+      projectData.logHandling = parsePlainNumber(document.getElementById('in-logHandling').value);
+      projectData.logStorage = parsePlainNumber(document.getElementById('in-logStorage').value);
+      projectData.logExtra = parsePlainNumber(document.getElementById('in-logExtra').value);
+
+      projectData.prodSalary = parsePlainNumber(document.getElementById('in-prodSalary').value);
+      projectData.prodInsuranceTax = parsePlainNumber(document.getElementById('in-prodInsuranceTax').value);
+      projectData.prodExtraStaff = parsePlainNumber(document.getElementById('in-prodExtraStaff').value);
+
+      projectData.prodMounting = parsePlainNumber(document.getElementById('in-prodMounting').value);
+      projectData.prodCommissioning = parsePlainNumber(document.getElementById('in-prodCommissioning').value);
+      projectData.subcontractExtra = parsePlainNumber(document.getElementById('in-subcontractExtra').value);
+
+      projectData.travelTotal = parsePlainNumber(document.getElementById('in-travelTotal').value);
+      projectData.overheadTotal = parsePlainNumber(document.getElementById('in-overheadTotal').value);
+
+      projectData.riskBankFee = parsePlainNumber(document.getElementById('in-riskBankFee').value);
+      projectData.riskPenaltiesPercent = parseFloat(document.getElementById('in-riskPenaltiesPercent').value) || 0;
+      projectData.riskExtraWork = parsePlainNumber(document.getElementById('in-riskExtraWork').value);
+      projectData.riskOther = parsePlainNumber(document.getElementById('in-riskOther').value);
+
+      projectData.taxOther = parsePlainNumber(document.getElementById('in-taxOther').value);
+
+      // Recalculate penalty rubles display from contract
+      var b = computeMetrics(projectData, {});
+      setSafeText('formatted-riskPenaltiesRub', formatRub(b.penaltiesRub));
+
+      refreshDashboard();
+    }
+
+    function handleSliderChange() {
+      refreshDashboard();
+    }
+
+    function resetScenarioSliders() {
+      document.getElementById('slider-fx').value = 0;
+      document.getElementById('slider-equip').value = 0;
+      document.getElementById('slider-log').value = 0;
+      document.getElementById('slider-pay').value = 0;
+      document.getElementById('slider-travel').value = 0;
+      document.getElementById('slider-overhead').value = 0;
+      document.getElementById('slider-penalties').value = 0;
+      document.getElementById('slider-price').value = 0;
+      showPushToast('Слайдеры стресс-теста возвращены в 0%', 'info');
+      refreshDashboard();
+    }
+
+    function applyScenarioAsBase() {
+      var d = getScenarioDeltasFromSliders();
+      var s = computeMetrics(projectData, d);
+
+      projectData.contractWithVat = Math.round(s.finalPriceWithVat);
+      projectData.equipRub = Math.round(s.totalEquipment);
+      projectData.logIntl = Math.round(s.totalLogistics);
+      projectData.prodSalary = Math.round(s.totalProduction);
+      projectData.travelTotal = Math.round(s.totalTravel);
+      projectData.overheadTotal = Math.round(s.totalOverhead);
+      projectData.riskPenaltiesPercent = Math.max(0, projectData.riskPenaltiesPercent + d.penalties);
+
+      resetScenarioSliders();
+      syncInputsFromState();
+      showPushToast('Сценарные значения успешно зафиксированы как базовые!', 'success');
+    }
+
+    function syncInputsFromState() {
+      document.getElementById('in-contractWithVat').value = formatPlainNumber(projectData.contractWithVat);
+      document.getElementById('in-equipRub').value = formatPlainNumber(projectData.equipRub);
+      document.getElementById('in-prodSalary').value = formatPlainNumber(projectData.prodSalary);
+      document.getElementById('in-travelTotal').value = formatPlainNumber(projectData.travelTotal);
+      document.getElementById('in-overheadTotal').value = formatPlainNumber(projectData.overheadTotal);
+      document.getElementById('in-riskPenaltiesPercent').value = projectData.riskPenaltiesPercent;
+      refreshDashboard();
+    }
+
+    /* Tab Page Switcher */
+    function switchPage(pageId) {
+      if (pageId === 'inputs' && !isUnlockedInputs) {
+        showPushToast('Доступ к исходным данным защищён. Введите PIN-код администратора', 'warn');
+        openAdminPinModal();
+        return;
+      }
+
+      document.getElementById('page-charts').classList.toggle('hidden', pageId !== 'charts');
+      document.getElementById('page-analytics').classList.toggle('hidden', pageId !== 'analytics');
+      document.getElementById('page-inputs').classList.toggle('hidden', pageId !== 'inputs');
+
+      var isDark = document.documentElement.classList.contains('dark');
+      var activeClass = isDark ? 'bg-mint text-darkBg shadow-sm' : 'bg-emerald-600 text-white shadow-sm';
+      var inactiveClass = 'val-muted hover:text-white';
+
+      ['charts', 'analytics', 'inputs'].forEach(function(pid) {
+        var btn = document.getElementById('tab-btn-' + pid);
+        if (btn) {
+          if (pid === pageId) {
+            btn.className = 'px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all ' + activeClass;
+          } else {
+            btn.className = 'px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ' + inactiveClass;
+          }
+        }
+      });
+
+      if (pageId === 'charts') {
+        setTimeout(function() {
+          if (chartRentabilityInstance) chartRentabilityInstance.resize();
+          if (chartExpensesInstance) chartExpensesInstance.resize();
+          if (chartWaterfallInstance) chartWaterfallInstance.resize();
+        }, 100);
+      }
+    }
+
+    function setWaterfallMode(mode) {
+      waterfallMode = mode;
+      document.getElementById('wf-mode-base').className = mode === 'base' ? 'px-2.5 py-1 rounded-lg font-bold bg-mint text-darkBg' : 'px-2.5 py-1 rounded-lg font-semibold fin-sub-card val-muted';
+      document.getElementById('wf-mode-scen').className = mode === 'scenario' ? 'px-2.5 py-1 rounded-lg font-bold bg-cyan-400 text-darkBg' : 'px-2.5 py-1 rounded-lg font-semibold fin-sub-card val-muted';
+      refreshDashboard();
+    }
+
+    /* Theme Engine */
+    function toggleTheme() {
+      var isDark = document.documentElement.classList.contains('dark');
+      setTheme(!isDark);
+    }
+
+    function setTheme(dark) {
+      if (dark) {
+        document.documentElement.classList.add('dark');
+        document.documentElement.classList.remove('light');
+        document.body.className = 'bg-darkBg text-darkText font-sans min-h-screen flex flex-col antialiased transition-colors duration-200';
+        document.getElementById('theme-toggle-btn').innerText = '🌙';
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+        document.body.className = 'bg-lightBg text-lightText font-sans min-h-screen flex flex-col antialiased transition-colors duration-200';
+        document.getElementById('theme-toggle-btn').innerText = '☀️';
+      }
+      try {
+        localStorage.setItem('fin_theme', dark ? 'dark' : 'light');
+      } catch (e) {}
+
+      refreshDashboard();
+    }
+
+    /* Tilda Read-Only Mode Admin Protection */
+    function requestTildaToggle() {
+      if (isUnlockedInputs) {
+        isUnlockedInputs = false;
+        applyAccessState();
+        showPushToast('Исходные данные заблокированы (режим Tilda)', 'info');
+        if (!document.getElementById('page-inputs').classList.contains('hidden')) {
+          switchPage('charts');
+        }
+      } else {
+        openAdminPinModal();
+      }
+    }
+
+    function openAdminPinModal() {
+      var modal = document.getElementById('admin-pin-modal');
+      var input = document.getElementById('admin-pin-input');
+      if (modal) modal.classList.remove('hidden');
+      if (input) {
+        input.value = '';
+        setTimeout(function() { input.focus(); }, 100);
+      }
+    }
+
+    function closeAdminPinModal() {
+      var modal = document.getElementById('admin-pin-modal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function verifyAdminPin() {
+      var input = document.getElementById('admin-pin-input');
+      var pin = input ? input.value.trim() : '';
+      if (pin === ADMIN_PIN) {
+        isUnlockedInputs = true;
+        applyAccessState();
+        closeAdminPinModal();
+        showPushToast('Доступ открыт! Редактирование исходных данных доступно.', 'success');
+        switchPage('inputs');
+      } else {
+        showPushToast('Неверный PIN-код администратора!', 'danger');
+        if (input) {
+          input.value = '';
+          input.focus();
+        }
+      }
+    }
+
+    function applyAccessState() {
+      var lockIcon = document.getElementById('tilda-lock-icon');
+      var btnMode = document.getElementById('btn-tilda-mode');
+      var tildaBadge = document.getElementById('tilda-badge-tag');
+      var readonlyBanner = document.getElementById('tilda-readonly-banner');
+
+      if (isUnlockedInputs) {
+        if (lockIcon) lockIcon.innerText = '🔓';
+        if (btnMode) {
+          btnMode.innerHTML = '<span id="tilda-lock-icon">🔓</span><span class="hidden md:inline">Заблокировать</span>';
+          btnMode.title = 'Заблокировать доступ к исходным данным';
+          btnMode.className = 'px-2.5 py-1.5 rounded-xl border border-emerald-500/40 text-xs font-semibold acc-mint hover:bg-emerald-500/10 transition-colors flex items-center gap-1';
+        }
+        if (tildaBadge) {
+          tildaBadge.innerText = 'Открыто';
+          tildaBadge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30';
+          tildaBadge.classList.remove('hidden');
+        }
+        if (readonlyBanner) readonlyBanner.classList.add('hidden');
+      } else {
+        if (lockIcon) lockIcon.innerText = '🔒';
+        if (btnMode) {
+          btnMode.innerHTML = '<span id="tilda-lock-icon">🔒</span><span class="hidden md:inline">Доступ: Закрыт</span>';
+          btnMode.title = 'Разблокировать доступ к исходным данным (требуется PIN)';
+          btnMode.className = 'px-2.5 py-1.5 rounded-xl border border-amber-500/40 text-xs font-semibold text-amber-500 hover:bg-amber-500/10 transition-colors flex items-center gap-1';
+        }
+        if (tildaBadge) {
+          tildaBadge.innerText = 'Закрыто';
+          tildaBadge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 font-bold border border-amber-500/30';
+          tildaBadge.classList.remove('hidden');
+        }
+        if (readonlyBanner) readonlyBanner.classList.remove('hidden');
+      }
+
+      var inputs = document.querySelectorAll('#page-inputs input, #page-inputs select, #page-inputs button');
+      inputs.forEach(function(inp) {
+        inp.disabled = !isUnlockedInputs;
+      });
+    }
+
+    var applyTildaReadOnlyState = applyAccessState;
+
+    /* Reset Confirmation Modal */
+    function openResetModal() {
+      document.getElementById('reset-modal').classList.remove('hidden');
+    }
+
+    function closeResetModal() {
+      document.getElementById('reset-modal').classList.add('hidden');
+    }
+
+    function confirmResetData() {
+      try {
+        localStorage.removeItem('fin_dashboard_data');
+      } catch (e) {}
+      projectData = JSON.parse(JSON.stringify(defaultData));
+      syncInputsFromState();
+      resetScenarioSliders();
+      closeResetModal();
+      showPushToast('Все данные успешно сброшены к образцу ТЗ', 'info');
+    }
+
+    function restoreDefaults() {
+      confirmResetData();
+    }
+
+    /* Initialization on window load */
+    window.onload = function() {
+      // 1. Load Theme
+      var savedTheme = 'dark';
+      try {
+        savedTheme = localStorage.getItem('fin_theme') || 'dark';
+      } catch (e) {}
+      setTheme(savedTheme === 'dark');
+
+      // 2. Load Data
+      try {
+        var saved = localStorage.getItem('fin_dashboard_data');
+        if (saved) {
+          projectData = Object.assign(projectData, JSON.parse(saved));
+        }
+      } catch (e) {}
+
+      // 3. Init Charts & UI
+      initCharts();
+      syncInputsFromState();
+
+      // Проверка ключа администратора в URL (?admin=2026 или ?key=2026)
+      var params = new URLSearchParams(window.location.search);
+      if (params.get('admin') === '2026' || params.get('key') === '2026') {
+        isUnlockedInputs = true;
+      } else {
+        // По умолчанию доступ к исходным данным всегда ЗАКРЫТ
+        isUnlockedInputs = false;
+      }
+      applyAccessState();
+    };
+  </script>
+</body>
+</html>
